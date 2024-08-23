@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+
+# This setup script should do the minimum work required to download the release package, unzip it, and kick off the
+# setup script contained within.
+
+# exit when any command fails
+set -e
+
+# Make sure only root can run our script
+if [ "$(id -u)" != "0" ]; then
+   echo "This script must be run as root" 1>&2
+   exit 1
+fi
+
+ARCH=$(uname -m)
+
+start_dir=$(pwd)
+
+# create temp directory
+tmp_dir=$(mktemp -d -t xr-driver-XXXXXXXXXX)
+pushd $tmp_dir > /dev/null
+echo "Created temp directory: ${tmp_dir}"
+
+binary_download_url="https://github.com/wheaney/XRLinuxDriver/releases/latest/download/xrDriver-$ARCH.tar.gz"
+if [ "$1" = "-v" ]
+then
+  metrics_version="$2"
+  binary_path_arg="$3"
+elif [ "$1" = "--tag" ] && [ -n "$2" ]
+then
+  binary_download_url="https://github.com/wheaney/XRLinuxDriver/releases/download/$2/xrDriver-$ARCH.tar.gz"
+else
+  binary_path_arg="$1"
+fi
+
+if [ -z "$binary_path_arg" ]
+then
+  # download and unzip the latest driver
+  binary_path_arg="xrDriver-$ARCH.tar.gz"
+  echo "Downloading to: ${tmp_dir}/$binary_path_arg"
+  curl -L -O $binary_download_url
+else
+  if [[ "$binary_path_arg" = /* ]]; then
+    abs_path="$binary_path_arg"
+  else
+    # Convert relative path to absolute path
+    abs_path=$(realpath "$start_dir/$binary_path_arg")
+  fi
+  cp $abs_path $tmp_dir
+fi
+
+echo "Extracting to: ${tmp_dir}/xr_driver"
+tar -xf $(basename $binary_path_arg)
+
+pushd xr_driver > /dev/null
+
+# run the setup script that comes with this release, pass in the metrics version
+./setup $metrics_version
+
+echo "Deleting temp directory: ${tmp_dir}"
+rm -rf $tmp_dir
+cd "$(dirs -l -0)" && dirs -c

@@ -1,0 +1,13 @@
+.idea/
+.cache/
+
+cmake-build-debug/
+cmake-build-release/
+
+build/
+out/
+
+xrDriver
+
+/include/custom_banner_config.h
+/custom_banner_config.yml
